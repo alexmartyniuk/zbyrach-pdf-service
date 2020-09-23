@@ -59,9 +59,11 @@ namespace Zbyrach.Pdf
 
             _leftOnlyArticleNodeScript = @"()=> {
                 const article = document.querySelectorAll('article')[0];
-                const parent = article.parentNode;
-                parent.innerHTML = '';
-                parent.append(article);
+                if (article) {
+                    const parent = article.parentNode;
+                    parent.innerHTML = '';
+                    parent.append(article);
+                }
                 console.log('All elements except the article were removed.'); 
             }";
 
@@ -85,14 +87,16 @@ namespace Zbyrach.Pdf
 
             _removeBannerTopScript = @"()=> {
                 var banner = document.querySelector('.branch-journeys-top');
-                var parent = banner.parentElement;
-                while (parent) {
-                    if (parent.parentElement == document.body) {
-                      break;
-                    }
-                    parent = parent.parentElement;
-                } 
-                document.body.removeChild(parent);
+                if (banner) {
+                    var parent = banner.parentElement;
+                    while (parent) {
+                        if (parent.parentElement == document.body) {
+                        break;
+                        }
+                        parent = parent.parentElement;
+                    } 
+                    document.body.removeChild(parent);
+                }
                 console.log('The top banner was removed.'); 
             }";
         }
