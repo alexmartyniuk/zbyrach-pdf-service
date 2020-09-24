@@ -10,7 +10,7 @@ namespace Zbyrach.Pdf
 {
     public class PdfService
     {
-        private readonly string _chromiumExecutablePath;        
+        private readonly string _chromiumExecutablePath;
         private readonly string _removeFolowLinkScript;
         private readonly string _removePageBreaksScript;
         private readonly string _leftOnlyArticleNodeScript;
@@ -101,24 +101,24 @@ namespace Zbyrach.Pdf
             }";
         }
 
-        public async Task WaitUntil(Func<bool> condition, int frequency = 100, int timeout = 15000)
+        public async Task<Stream> ConvertUrlToPdf(string url, DeviceType deviceType, bool inline = false)
         {
-            var waitTask = Task.Run(async () =>
-            {
-                while (!condition()) await Task.Delay(frequency);
-            });
-
-            if (waitTask != await Task.WhenAny(waitTask,
-                    Task.Delay(timeout)))
-                throw new TimeoutException();
+            Stream result = null;
+            await ConvertUrlToPdf(url, new DeviceType[] { deviceType }, new bool[] { inline }, async (device, inln, stream) =>
+                 {
+                     result = stream;
+                 });
+            return result;
         }
 
-        public async Task<Stream> ConvertUrlToPdf(string url, DeviceType deviceType, bool inline = false)
+        public async Task ConvertUrlToPdf(string url, DeviceType[] deviceTypes, bool[] inlines, Func<DeviceType, bool, Stream, Task> callback)
         {
             if (string.IsNullOrEmpty(url))
             {
-                return null;
+                return;
             }
+
+            inlines = inlines.OrderByDescending(i => i).ToArray();
 
             var options = new LaunchOptions
             {
@@ -190,30 +190,52 @@ namespace Zbyrach.Pdf
 
             await page.EvaluateFunctionAsync(_removeFolowLinkScript);
             await WaitUntil(() => _lastLogMessage == "Follow links were removed.");
-            
-            if (!inline)
-            {
-                await page.EvaluateFunctionAsync(_removePageBreaksScript);
-                await WaitUntil(() => _lastLogMessage == "Page breaks were removed.");
-            }
 
-            var format = deviceType switch
+            foreach (var inline in inlines)
             {
-                DeviceType.Mobile => PaperFormat.A6,
-                DeviceType.Tablet => inline ? PaperFormat.A4 : PaperFormat.A5,
-                DeviceType.Desktop => PaperFormat.A4,
-                _ => throw new ArgumentOutOfRangeException(nameof(deviceType))
-            };
-
-            return await page.PdfStreamAsync(new PdfOptions
-            {
-                Format = format,
-                MarginOptions = new PuppeteerSharp.Media.MarginOptions
+                foreach (var deviceType in deviceTypes)
                 {
-                    Top = inline ? "0px" : "40px",
-                    Bottom = inline ? "0px" : "40px"
+                    if (!inline)
+                    {
+                        await page.EvaluateFunctionAsync(_removePageBreaksScript);
+                        await WaitUntil(() => _lastLogMessage == "Page breaks were removed.");
+                    }
+
+                    var format = deviceType switch
+                    {
+                        DeviceType.Mobile => PaperFormat.A6,
+                        DeviceType.Tablet => inline ? PaperFormat.A4 : PaperFormat.A5,
+                        DeviceType.Desktop => PaperFormat.A4,
+                        _ => throw new ArgumentOutOfRangeException(nameof(deviceType))
+                    };
+
+                    var stream = await page.PdfStreamAsync(new PdfOptions
+                    {
+                        Format = format,
+                        MarginOptions = new PuppeteerSharp.Media.MarginOptions
+                        {
+                            Top = inline ? "0px" : "40px",
+                            Bottom = inline ? "0px" : "40px"
+                        }
+                    });
+
+                    await callback(deviceType, inline, stream);
                 }
+            }
+        }
+
+
+
+        private async Task WaitUntil(Func<bool> condition, int frequency = 100, int timeout = 15000)
+        {
+            var waitTask = Task.Run(async () =>
+            {
+                while (!condition()) await Task.Delay(frequency);
             });
+
+            if (waitTask != await Task.WhenAny(waitTask,
+                    Task.Delay(timeout)))
+                throw new TimeoutException();
         }
     }
 }

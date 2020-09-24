@@ -23,7 +23,7 @@ namespace Zbyrach.Pdf
         [Route("/pdf")]
         public async Task<IActionResult> GetPdf([FromBody] GeneratePdfRequest request)
         {
-            var article = await _articleService.FindArticle(request.ArticleUrl, request.DeviceType, request.Inline);
+            var article = await _articleService.Find(request.ArticleUrl, request.DeviceType, request.Inline);
             Stream stream = null;
             if (article != null)
             {
@@ -32,7 +32,7 @@ namespace Zbyrach.Pdf
             else
             {
                 stream = await _pdfService.ConvertUrlToPdf(request.ArticleUrl, request.DeviceType, request.Inline);                
-                await _articleService.SaveArticle(request.ArticleUrl, request.DeviceType, request.Inline, stream);
+                await _articleService.CreateOrUpdate(request.ArticleUrl, request.DeviceType, request.Inline, stream);
             }
             
             stream.Position = 0;
@@ -45,6 +45,20 @@ namespace Zbyrach.Pdf
             }.ToString();           
 
             return File(stream, "application/pdf");
+        }
+
+        [HttpPost]
+        [Route("/queue")]
+        public async Task<IActionResult> QueueArticle([FromBody] QueueArticleRequest request)
+        {         
+            if (await _articleService.IsExist(request.ArticleUrl))
+            {
+                return Ok();
+            }
+
+            await _articleService.QueueForGenerating(request.ArticleUrl);
+                                               
+            return Ok();
         }
 
         private string GetPdfFileName(string url)
