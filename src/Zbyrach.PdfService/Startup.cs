@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace Zbyrach.Pdf
 {
@@ -31,8 +32,12 @@ namespace Zbyrach.Pdf
                     Version = "v1"
                 });
             });
-
+            services.AddDbContext<ApplicationContext>(options =>
+            {
+                options.UseNpgsql(Configuration.GetConnectionString());
+            });
             services.AddScoped<PdfService>();
+            services.AddScoped<ArticleService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

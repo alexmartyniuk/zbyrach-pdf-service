@@ -11,18 +11,32 @@ namespace Zbyrach.Pdf
     public class PdfController : Controller
     {
         private readonly PdfService _pdfService;
+        private readonly ArticleService _articleService;
 
-        public PdfController(PdfService pdfService)
+        public PdfController(PdfService pdfService, ArticleService articleService)
         {
             _pdfService = pdfService;
+            _articleService = articleService;
         }
 
         [HttpPost]
         [Route("/pdf")]
         public async Task<IActionResult> GetPdf([FromBody] GeneratePdfRequest request)
         {
-            var stream = await _pdfService.ConvertUrlToPdf(request.ArticleUrl, request.DeviceType, request.Inline);
-            var fileName = GetPdfFileName(request.ArticleUrl);
+            var article = await _articleService.FindArticle(request.ArticleUrl, request.DeviceType, request.Inline);
+            Stream stream = null;
+            if (article != null)
+            {
+                stream = new MemoryStream(article.PdfData); 
+            }
+            else
+            {
+                stream = await _pdfService.ConvertUrlToPdf(request.ArticleUrl, request.DeviceType, request.Inline);                
+                await _articleService.SaveArticle(request.ArticleUrl, request.DeviceType, request.Inline, stream);
+            }
+            
+            stream.Position = 0;
+            var fileName = GetPdfFileName(request.ArticleUrl);            
             
             Response.Headers[HeaderNames.ContentDisposition] = new ContentDisposition
             {
