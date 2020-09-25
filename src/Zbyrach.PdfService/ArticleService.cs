@@ -56,7 +56,7 @@ namespace Zbyrach.Pdf
         public Task<List<ArticleModel>> DequeueForGenerating()
         {
             return _context.Articles
-                .Where(a => a.PdfDataSize == 0)
+                .Where(a => a.PdfDataSize == 0 && a.LastError == null)
                 .ToListAsync();
         }
 
@@ -92,6 +92,21 @@ namespace Zbyrach.Pdf
                 });
             }
 
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task MarkAsFailed(string url, string message)
+        {
+            var articles = await _context.Articles
+                .Where(a => a.Url == url)
+                .ToListAsync();
+                
+            foreach (var article in articles)
+            {
+                article.LastError = message;
+            }
+
+            _context.Articles.UpdateRange(articles);
             await _context.SaveChangesAsync();
         }
 

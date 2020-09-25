@@ -11,5 +11,6 @@ namespace Zbyrach.Pdf
         public byte[] PdfData { get; set; }
         public long PdfDataSize { get; set; }
         public DateTime StoredAt { get; set; }
+        public string LastError { get; set; }
     }
 }

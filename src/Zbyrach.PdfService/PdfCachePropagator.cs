@@ -61,6 +61,7 @@ namespace Zbyrach.Pdf
                 }
                 catch (Exception e)
                 {
+                    await articleService.MarkAsFailed(articleUrl, e.Message);
                     _logger.LogError($"Cannot generate PDF for {articleUrl}: {e}");
                 }
             }
