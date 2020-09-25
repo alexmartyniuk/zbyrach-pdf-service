@@ -16,6 +16,7 @@ namespace Zbyrach.Pdf
         private readonly string _leftOnlyArticleNodeScript;
         private readonly string _scrollPageToBottomScript;
         private readonly string _removeBannerTopScript;
+        private readonly string _removeBannerFreeStoriesScript; 
         private string _lastLogMessage;
 
         public PdfService(IConfiguration configuration)
@@ -98,6 +99,21 @@ namespace Zbyrach.Pdf
                     document.body.removeChild(parent);
                 }
                 console.log('The top banner was removed.'); 
+            }";
+
+            _removeBannerFreeStoriesScript = @"()=> {
+                var banner = document.querySelector('article h4>span');
+                if (banner && banner.textContent.includes('free stories left this month.')) {
+                    var parent = banner.parentElement;
+                    while (parent) {
+                        if (parent.parentElement.nodeName == 'ARTICLE') {
+                        break;
+                        }
+                        parent = parent.parentElement;
+                    } 
+                    parent.parentElement.removeChild(parent);    
+                }
+                console.log('The free stories banner was removed.');
             }";
         }
 
@@ -188,8 +204,11 @@ namespace Zbyrach.Pdf
             await page.EvaluateFunctionAsync(_removeBannerTopScript);
             await WaitUntil(() => _lastLogMessage == "The top banner was removed.");
 
+            await page.EvaluateFunctionAsync(_removeBannerFreeStoriesScript);
+            await WaitUntil(() => _lastLogMessage == "The free stories banner was removed.");
+
             await page.EvaluateFunctionAsync(_removeFolowLinkScript);
-            await WaitUntil(() => _lastLogMessage == "Follow links were removed.");
+            await WaitUntil(() => _lastLogMessage == "Follow links were removed.");            
 
             foreach (var inline in inlines)
             {
