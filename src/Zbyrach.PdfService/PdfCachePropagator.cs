@@ -57,6 +57,7 @@ namespace Zbyrach.Pdf
                     {
                         await articleService.CreateOrUpdate(articleUrl, device, inln, stream);
                     });
+                    _logger.LogInformation($"PDFs were generated for: {articleUrl}");
 
                 }
                 catch (Exception e)
@@ -64,6 +65,11 @@ namespace Zbyrach.Pdf
                     await articleService.MarkAsFailed(articleUrl, e.Message);
                     _logger.LogError($"Cannot generate PDF for {articleUrl}: {e}");
                 }
+            }
+
+            if (articles.Count == 0)
+            {
+                 _logger.LogInformation($"No articles to proceed.");
             }
         }
     }
