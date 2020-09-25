@@ -25,7 +25,7 @@ namespace Zbyrach.Pdf
         {
             var article = await _articleService.Find(request.ArticleUrl, request.DeviceType, request.Inline);
             Stream stream = null;
-            if (article?.PdfDataSize != 0)
+            if (article != null && article.PdfDataSize != 0)
             {
                 stream = new MemoryStream(article.PdfData); 
             }
