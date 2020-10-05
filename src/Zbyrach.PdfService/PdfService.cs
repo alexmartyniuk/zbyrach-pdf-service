@@ -10,6 +10,8 @@ namespace Zbyrach.Pdf
 {
     public class PdfService
     {
+
+        private const int _timeout = 60000;
         private readonly string _chromiumExecutablePath;
         private readonly string _removeFolowLinkScript;
         private readonly string _removePageBreaksScript;
@@ -165,7 +167,8 @@ namespace Zbyrach.Pdf
                     "--disable-3d-apis",
                     "--disable-bundled-ppapi-flash",
                  },
-                ExecutablePath = _chromiumExecutablePath
+                ExecutablePath = _chromiumExecutablePath,
+                Timeout = _timeout
             };
 
             using var browser = await Puppeteer.LaunchAsync(options);
@@ -245,7 +248,7 @@ namespace Zbyrach.Pdf
 
 
 
-        private async Task WaitUntil(Func<bool> condition, int frequency = 100, int timeout = 15000)
+        private async Task WaitUntil(Func<bool> condition, int frequency = 100, int timeout = _timeout)
         {
             var waitTask = Task.Run(async () =>
             {
