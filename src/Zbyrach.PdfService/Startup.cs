@@ -8,6 +8,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using RedBear.LogDNA.Extensions.Logging;
+using RedBear.LogDNA.Extensions.Logging.Web;
 
 namespace Zbyrach.Pdf
 {
@@ -41,6 +43,11 @@ namespace Zbyrach.Pdf
 
             services.AddSingleton<PdfService>();
             services.AddScoped<ArticleService>();
+
+            var options = new LogDNAOptions(Configuration["LOGDNA_KEY"], LogLevel.Debug)
+                .AddWebItems();
+
+            services.AddLogging(loggingBuilder => loggingBuilder.AddLogDNA(options));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
