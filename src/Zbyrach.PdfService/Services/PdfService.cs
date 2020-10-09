@@ -11,7 +11,7 @@ namespace Zbyrach.Pdf
 {
     public class PdfService
     {
-        private const int PDF_GENERATION_TIMOUT = 60000;
+        private const int PDF_GENERATION_TIMEOUT = 60000;
         private readonly string _chromiumExecutablePath;
         private readonly ILogger<PdfService> _logger;
 
@@ -33,12 +33,9 @@ namespace Zbyrach.Pdf
 
         public async Task ConvertUrlToPdf(string url, DeviceType[] deviceTypes, bool[] inlines, Func<DeviceType, bool, Stream, Task> callback)
         {
-            if (string.IsNullOrEmpty(url))
-            {
-                return;
-            }
-
-            inlines = inlines.OrderByDescending(i => i).ToArray();
+            inlines = inlines
+                .OrderByDescending(i => i)
+                .ToArray();
 
             var options = new LaunchOptions
             {
@@ -70,7 +67,7 @@ namespace Zbyrach.Pdf
                     "--disable-bundled-ppapi-flash",
                  },
                 ExecutablePath = _chromiumExecutablePath,
-                Timeout = PDF_GENERATION_TIMOUT
+                Timeout = PDF_GENERATION_TIMEOUT
             };
 
             using var browser = await Puppeteer.LaunchAsync(options);
@@ -281,7 +278,7 @@ namespace Zbyrach.Pdf
                 page.Console -= ConsoleHandler;
             }
         }
-        private async Task WaitUntil(Func<bool> condition, int frequency = 100, int timeout = PDF_GENERATION_TIMOUT)
+        private async Task WaitUntil(Func<bool> condition, int frequency = 100, int timeout = PDF_GENERATION_TIMEOUT)
         {
             var waitTask = Task.Run(async () =>
             {
