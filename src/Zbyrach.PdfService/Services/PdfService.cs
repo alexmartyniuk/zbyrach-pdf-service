@@ -87,7 +87,7 @@ namespace Zbyrach.Pdf
                 {
                     if (!inline)
                     {
-                        await RemovePageBreaksScript(page);
+                        await RemovePageBreaks(page);
                     }
 
                     var format = deviceType switch
@@ -113,7 +113,7 @@ namespace Zbyrach.Pdf
             }
         }
 
-        private async Task RemovePageBreaksScript(Page page)
+        private async Task RemovePageBreaks(Page page)
         {
             var markerString = Guid.NewGuid().ToString();
             await ExecuteJavascript(page, @"()=> {
