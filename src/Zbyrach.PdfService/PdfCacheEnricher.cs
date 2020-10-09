@@ -8,19 +8,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Zbyrach.Pdf
 {
-    public class PdfCachePropagator : BackgroundService
+    public class PdfCacheEnricher : BackgroundService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        private readonly ILogger<PdfCachePropagator> _logger;
+        private readonly ILogger<PdfCacheEnricher> _logger;
         private readonly PdfService _pdfService;
 
-        public PdfCachePropagator(IServiceScopeFactory serviceScopeFactory,
+        public PdfCacheEnricher(IServiceScopeFactory serviceScopeFactory,
             PdfService pdfService,
-            ILogger<PdfCachePropagator> logger)
+            ILogger<PdfCacheEnricher> logger)
         {
-            _pdfService = pdfService;
-            _logger = logger;
             _serviceScopeFactory = serviceScopeFactory;
+            _pdfService = pdfService;
+            _logger = logger;            
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -29,7 +29,7 @@ namespace Zbyrach.Pdf
             {
                 try
                 {
-                    await SavePdf(stoppingToken);
+                    await GenerateAndSave(stoppingToken);
                 }
                 catch (Exception e)
                 {
@@ -39,38 +39,44 @@ namespace Zbyrach.Pdf
             }
         }
 
-        private async Task SavePdf(CancellationToken stoppingToken)
+        private async Task GenerateAndSave(CancellationToken stoppingToken)
         {
             using var serviceScope = _serviceScopeFactory.CreateScope();
             var articleService = serviceScope.ServiceProvider.GetRequiredService<ArticleService>();
 
             var articles = await articleService.DequeueForGenerating();
+            if (articles.Count == 0)
+            {
+                _logger.LogInformation($"No articles to proceed.");
+            }
+
+            _logger.LogInformation($"Found {articles.Count} articles for generating PDFs.");
             foreach (var group in articles.GroupBy(a => a.Url))
             {
                 var articleUrl = group.Key;
-                var deviceTypes = group.Select(a => a.DeviceType).Distinct().ToArray();
-                var inlines = group.Select(a => a.Inlined).Distinct().ToArray();
-
+                var deviceTypes = group
+                    .Select(a => a.DeviceType)
+                    .Distinct()
+                    .ToArray();
+                var inlines = group
+                    .Select(a => a.Inlined)
+                    .Distinct()
+                    .ToArray();
                 try
                 {
+                    _logger.LogInformation($"Started processing for: '{articleUrl}'");
                     await _pdfService.ConvertUrlToPdf(articleUrl, deviceTypes, inlines, async (device, inln, stream) =>
                     {
                         await articleService.CreateOrUpdate(articleUrl, device, inln, stream);
                     });
-                    _logger.LogInformation($"PDFs were generated for: {articleUrl}");
-
+                    _logger.LogInformation($"Article was successfully processed: '{articleUrl}'");
                 }
                 catch (Exception e)
                 {
                     await articleService.MarkAsFailed(articleUrl, e.Message);
-                    _logger.LogError($"Cannot generate PDF for {articleUrl}: {e}");
+                    _logger.LogError($"Cannot process '{articleUrl}' due: {e}");
                 }
-            }
-
-            if (articles.Count == 0)
-            {
-                 _logger.LogInformation($"No articles to proceed.");
-            }
+            }            
         }
     }
 }

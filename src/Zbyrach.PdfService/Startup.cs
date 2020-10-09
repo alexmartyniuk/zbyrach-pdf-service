@@ -37,7 +37,7 @@ namespace Zbyrach.Pdf
                 options.UseNpgsql(Configuration.GetConnectionString());
             });
 
-            services.AddHostedService<PdfCachePropagator>();
+            services.AddHostedService<PdfCacheEnricher>();
 
             services.AddSingleton<PdfService>();
             services.AddScoped<ArticleService>();

@@ -16,7 +16,7 @@ namespace Zbyrach.Pdf
             _context = context;
         }
 
-        public async Task<ArticleModel> Find(string url, DeviceType deviceType, bool inlined)
+        public async Task<ArticleModel> FindOne(string url, DeviceType deviceType, bool inlined)
         {
             return await _context.Articles
                 .SingleOrDefaultAsync(a =>
@@ -27,7 +27,7 @@ namespace Zbyrach.Pdf
 
         public async Task CreateOrUpdate(string url, DeviceType deviceType, bool inlined, Stream pdfStream)
         {
-            var article = await Find(url, deviceType, inlined);
+            var article = await FindOne(url, deviceType, inlined);
             if (article == null)
             {
                 article = new ArticleModel
@@ -56,11 +56,12 @@ namespace Zbyrach.Pdf
         public Task<List<ArticleModel>> DequeueForGenerating()
         {
             return _context.Articles
-                .Where(a => a.PdfDataSize == 0 && a.LastError == null)
+                .Where(a => a.PdfDataSize == 0 && a.LastError == null)                
+                .OrderByDescending(a => a.StoredAt)                
                 .ToListAsync();
         }
 
-        public async Task<bool> IsExist(string articleUrl)
+        public async Task<bool> IsExistByUrl(string articleUrl)
         {
             var count = await _context.Articles
                 .CountAsync(a => a.Url == articleUrl);

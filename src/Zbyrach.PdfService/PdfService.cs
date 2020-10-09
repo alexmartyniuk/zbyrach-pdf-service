@@ -5,118 +5,20 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
+using Microsoft.Extensions.Logging;
 
 namespace Zbyrach.Pdf
 {
     public class PdfService
     {
-
-        private const int _timeout = 60000;
+        private const int PDF_GENERATION_TIMOUT = 60000;
         private readonly string _chromiumExecutablePath;
-        private readonly string _removeFolowLinkScript;
-        private readonly string _removePageBreaksScript;
-        private readonly string _leftOnlyArticleNodeScript;
-        private readonly string _scrollPageToBottomScript;
-        private readonly string _removeBannerTopScript;
-        private readonly string _removeBannerFreeStoriesScript; 
-        private string _lastLogMessage;
+        private readonly ILogger<PdfService> _logger;
 
-        public PdfService(IConfiguration configuration)
+        public PdfService(IConfiguration configuration, ILogger<PdfService> logger)
         {
             _chromiumExecutablePath = configuration["PUPPETEER_EXECUTABLE_PATH"];
-
-            _removeFolowLinkScript = @"()=> {
-                    const links = document.querySelectorAll('a, button');
-                    for (let link of links) {
-                        if (link.textContent.includes('Follow')) {
-                            link.style.display = 'none';
-                        }
-                        if (link.getAttribute('target') !== '_blank') {
-                            link.removeAttribute('href');              
-                        } 
-                    }
-                    console.log('Follow links were removed.'); 
-                }";
-
-            _removePageBreaksScript = @"()=> {
-                    var style = document.createElement('style');
-                    style.innerHTML = `
-                        h1, h2 {
-                            page-break-inside: avoid;
-                        }
-                        h1::after, h2::after {
-                            content: '';
-                            display: block;
-                            height: 100px;
-                            margin-bottom: -100px;
-                        }
-                        .paragraph-image, figure {
-                            page-break-inside: avoid;
-                            page-break-before: auto;
-                            page-break-after: auto;
-                        }
-                        `;
-                    document.head.appendChild(style);
-                    console.log('Page breaks were removed.'); 
-                }";
-
-            _leftOnlyArticleNodeScript = @"()=> {
-                const article = document.querySelectorAll('article')[0];
-                if (article) {
-                    const parent = article.parentNode;
-                    parent.innerHTML = '';
-                    parent.append(article);
-                }
-                console.log('All elements except the article were removed.'); 
-            }";
-
-            _scrollPageToBottomScript = @"()=> {                
-                var currentScroll = 0;
-                var scrollStep = 200;
-                var scrollInterval = 100;
-
-                function scrool() {
-                    if (currentScroll > document.body.scrollHeight) {
-                        console.log('Scrolling to the bottom was finished.'); 
-                        return;
-                    }
-                    currentScroll += scrollStep;
-                    window.scrollBy(0, scrollStep);   
-                    setTimeout(scrool, scrollInterval);
-                };
-                
-                scrool();            
-            }";
-
-            _removeBannerTopScript = @"()=> {
-                var banner = document.querySelector('.branch-journeys-top');
-                if (banner) {
-                    var parent = banner.parentElement;
-                    while (parent) {
-                        if (parent.parentElement == document.body) {
-                        break;
-                        }
-                        parent = parent.parentElement;
-                    } 
-                    document.body.removeChild(parent);
-                }
-                console.log('The top banner was removed.'); 
-            }";
-
-            _removeBannerFreeStoriesScript = @"()=> {
-                var banner = document.querySelector('article h4>span');
-                if (banner && banner.textContent.includes('free stories left this month.')) {
-                    var parent = banner.parentElement;
-                    while (parent) {
-                        if (parent.parentElement.nodeName == 'ARTICLE') {
-                        break;
-                        }
-                        parent = parent.parentElement;
-                    } 
-                    parent.parentElement.removeChild(parent);    
-                }
-                console.log('The free stories banner was removed.');
-            }";
+            _logger = logger;
         }
 
         public async Task<Stream> ConvertUrlToPdf(string url, DeviceType deviceType, bool inline = false)
@@ -168,50 +70,19 @@ namespace Zbyrach.Pdf
                     "--disable-bundled-ppapi-flash",
                  },
                 ExecutablePath = _chromiumExecutablePath,
-                Timeout = _timeout
+                Timeout = PDF_GENERATION_TIMOUT
             };
 
             using var browser = await Puppeteer.LaunchAsync(options);
             using var page = await browser.NewPageAsync();
 
-            page.Console += async (sender, args) =>
-            {
-                switch (args.Message.Type)
-                {
-                    case ConsoleType.Error:
-                        try
-                        {
-                            var errorArgs = await Task.WhenAll(args.Message.Args.Select(arg => arg.ExecutionContext.EvaluateFunctionAsync("(arg) => arg instanceof Error ? arg.message : arg", arg)));
-                            System.Console.WriteLine($"{args.Message.Text} args: [{string.Join<object>(", ", errorArgs)}]");
-                        }
-                        catch { }
-                        break;
-                    case ConsoleType.Warning:
-                        System.Console.WriteLine(args.Message.Text);
-                        break;
-                    default:
-                        _lastLogMessage = args.Message.Text;
-                        System.Console.WriteLine(args.Message.Text);
-                        break;
-                }
-            };
-
             await page.GoToAsync(url);
 
-            await page.EvaluateFunctionAsync(_leftOnlyArticleNodeScript);
-            await WaitUntil(() => _lastLogMessage == "All elements except the article were removed.");
-
-            await page.EvaluateFunctionAsync(_scrollPageToBottomScript);
-            await WaitUntil(() => _lastLogMessage == "Scrolling to the bottom was finished.");
-
-            await page.EvaluateFunctionAsync(_removeBannerTopScript);
-            await WaitUntil(() => _lastLogMessage == "The top banner was removed.");
-
-            await page.EvaluateFunctionAsync(_removeBannerFreeStoriesScript);
-            await WaitUntil(() => _lastLogMessage == "The free stories banner was removed.");
-
-            await page.EvaluateFunctionAsync(_removeFolowLinkScript);
-            await WaitUntil(() => _lastLogMessage == "Follow links were removed.");            
+            await RemoveRedundantContent(page);
+            await ScrollPageToBottomScript(page);
+            await RemoveTopBanner(page);
+            await RemoveFreeStoriesLeftBanner(page);
+            await RemoveFollowLinks(page);
 
             foreach (var inline in inlines)
             {
@@ -219,8 +90,7 @@ namespace Zbyrach.Pdf
                 {
                     if (!inline)
                     {
-                        await page.EvaluateFunctionAsync(_removePageBreaksScript);
-                        await WaitUntil(() => _lastLogMessage == "Page breaks were removed.");
+                        await RemovePageBreaksScript(page);
                     }
 
                     var format = deviceType switch
@@ -246,13 +116,179 @@ namespace Zbyrach.Pdf
             }
         }
 
+        private async Task RemovePageBreaksScript(Page page)
+        {
+            var markerString = Guid.NewGuid().ToString();
+            await ExecuteJavascript(page, @"()=> {
+                    var style = document.createElement('style');
+                    style.innerHTML = `
+                        h1, h2 {
+                            page-break-inside: avoid;
+                        }
+                        h1::after, h2::after {
+                            content: '';
+                            display: block;
+                            height: 100px;
+                            margin-bottom: -100px;
+                        }
+                        .paragraph-image, figure {
+                            page-break-inside: avoid;
+                            page-break-before: auto;
+                            page-break-after: auto;
+                        }
+                        `;
+                    document.head.appendChild(style);                  
+                    console.log('" + markerString + @"'); 
+                }", markerString);
+            _logger.LogInformation("Page breaks were removed.");
+        }
 
+        private async Task RemoveFollowLinks(Page page)
+        {
+            var markerString = Guid.NewGuid().ToString();
+            await ExecuteJavascript(page, @"()=> {
+                const links = document.querySelectorAll('a, button');
+                for (let link of links) {
+                    if (link.textContent.includes('Follow')) {
+                        link.style.display = 'none';
+                    }
+                    if (link.getAttribute('target') !== '_blank') {
+                        link.removeAttribute('href');              
+                    } 
+                }
+                console.log('" + markerString + @"'); 
+            }", markerString);
+            _logger.LogInformation("Follow links were removed.");
+        }
 
-        private async Task WaitUntil(Func<bool> condition, int frequency = 100, int timeout = _timeout)
+        private async Task RemoveFreeStoriesLeftBanner(Page page)
+        {
+            var markerString = Guid.NewGuid().ToString();
+            await ExecuteJavascript(page, @"()=> {
+                var banner = document.querySelector('article h4>span');
+                if (banner && banner.textContent.includes('free stories left this month.')) {
+                    var parent = banner.parentElement;
+                    while (parent) {
+                        if (parent.parentElement.nodeName == 'ARTICLE') {
+                        break;
+                        }
+                        parent = parent.parentElement;
+                    } 
+                    parent.parentElement.removeChild(parent);    
+                }
+                console.log('" + markerString + @"'); 
+            }", markerString);
+            _logger.LogInformation("The free stories banner was removed.");
+        }
+
+        private async Task RemoveTopBanner(Page page)
+        {
+            var markerString = Guid.NewGuid().ToString();
+            await ExecuteJavascript(page, @"()=> {
+                var banner = document.querySelector('.branch-journeys-top');
+                if (banner) {
+                    var parent = banner.parentElement;
+                    while (parent) {
+                        if (parent.parentElement == document.body) {
+                        break;
+                        }
+                        parent = parent.parentElement;
+                    } 
+                    document.body.removeChild(parent);
+                } 
+                console.log('" + markerString + @"'); 
+            }", markerString);
+            _logger.LogInformation("The top banner was removed.");
+        }
+
+        private async Task ScrollPageToBottomScript(Page page)
+        {
+            var markerString = Guid.NewGuid().ToString();
+            await ExecuteJavascript(page, @"()=> {                
+                var currentScroll = 0;
+                var scrollStep = 200;
+                var scrollInterval = 100;
+
+                function scrool() {
+                    if (currentScroll > document.body.scrollHeight) {
+                        console.log('" + markerString + @"'); 
+                        return;
+                    }
+                    currentScroll += scrollStep;
+                    window.scrollBy(0, scrollStep);   
+                    setTimeout(scrool, scrollInterval);
+                };
+                
+                scrool();            
+            }", markerString);
+            _logger.LogInformation("Scrolling to the bottom was finished.");
+        }
+
+        private async Task RemoveRedundantContent(Page page)
+        {
+            var markerString = Guid.NewGuid().ToString();
+            await ExecuteJavascript(page, @"()=> {
+                const article = document.querySelectorAll('article')[0];
+                if (article) {
+                    const parent = article.parentNode;
+                    parent.innerHTML = '';
+                    parent.append(article);
+                }  
+                console.log('" + markerString + @"');               
+            }", markerString);
+            _logger.LogInformation("Redundant content was removed.");
+        }
+
+        private async Task ExecuteJavascript(Page page, string javaScript, string markerString)
+        {
+            if (string.IsNullOrEmpty(markerString))
+            {
+                throw new Exception("Marker string can not be empty.");
+            }
+
+            var lastLogMessage = string.Empty;
+
+            async void ConsoleHandler(object sender, ConsoleEventArgs args)
+            {
+                switch (args.Message.Type)
+                {
+                    case ConsoleType.Error:
+                        try
+                        {
+                            var errorArgs = await Task.WhenAll(args.Message.Args.Select(
+                                arg => arg.ExecutionContext.EvaluateFunctionAsync("(arg) => arg instanceof Error ? arg.message : arg", arg)));
+                            _logger.LogError($"{args.Message.Text} args: [{string.Join<object>(", ", errorArgs)}]");
+                        }
+                        catch { }
+                        break;
+                    case ConsoleType.Warning:
+                        _logger.LogWarning(args.Message.Text);
+                        break;
+                    default:
+                        lastLogMessage = args.Message.Text;
+                        break;
+                }
+            };
+
+            page.Console += ConsoleHandler;
+            try
+            {
+                await page.EvaluateFunctionAsync(javaScript);
+                await WaitUntil(() => lastLogMessage == markerString);
+            }
+            finally
+            {
+                page.Console -= ConsoleHandler;
+            }
+        }
+        private async Task WaitUntil(Func<bool> condition, int frequency = 100, int timeout = PDF_GENERATION_TIMOUT)
         {
             var waitTask = Task.Run(async () =>
             {
-                while (!condition()) await Task.Delay(frequency);
+                while (!condition())
+                {
+                    await Task.Delay(frequency);
+                }
             });
 
             if (waitTask != await Task.WhenAny(waitTask,

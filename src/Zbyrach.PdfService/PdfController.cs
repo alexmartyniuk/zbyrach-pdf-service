@@ -23,7 +23,8 @@ namespace Zbyrach.Pdf
         [Route("/pdf")]
         public async Task<IActionResult> GetPdf([FromBody] GeneratePdfRequest request)
         {
-            var article = await _articleService.Find(request.ArticleUrl, request.DeviceType, request.Inline);
+            var article = await _articleService.FindOne(request.ArticleUrl, request.DeviceType, request.Inline);
+            
             Stream stream = null;
             if (article != null && article.PdfDataSize != 0)
             {
@@ -33,17 +34,17 @@ namespace Zbyrach.Pdf
             {
                 stream = await _pdfService.ConvertUrlToPdf(request.ArticleUrl, request.DeviceType, request.Inline);                
                 await _articleService.CreateOrUpdate(request.ArticleUrl, request.DeviceType, request.Inline, stream);
-            }
+            }            
             
-            stream.Position = 0;
-            var fileName = GetPdfFileName(request.ArticleUrl);            
-            
-            Response.Headers[HeaderNames.ContentDisposition] = new ContentDisposition
+            var contentDisposition = new ContentDisposition
             {
-                FileName = fileName,
+                FileName = GetPdfFileName(request.ArticleUrl),
                 DispositionType = request.Inline ? DispositionTypeNames.Inline : DispositionTypeNames.Attachment
-            }.ToString();           
+            };           
 
+            Response.Headers[HeaderNames.ContentDisposition] = contentDisposition.ToString();
+            stream.Position = 0;
+            
             return File(stream, "application/pdf");
         }
 
@@ -51,12 +52,10 @@ namespace Zbyrach.Pdf
         [Route("/queue")]
         public async Task<IActionResult> QueueArticle([FromBody] QueueArticleRequest request)
         {         
-            if (await _articleService.IsExist(request.ArticleUrl))
+            if (!await _articleService.IsExistByUrl(request.ArticleUrl))
             {
-                return Ok();
-            }
-
-            await _articleService.QueueForGenerating(request.ArticleUrl);
+                await _articleService.QueueForGenerating(request.ArticleUrl);
+            }           
                                                
             return Ok();
         }
