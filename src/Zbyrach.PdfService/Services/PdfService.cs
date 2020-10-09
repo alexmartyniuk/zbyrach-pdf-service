@@ -76,7 +76,7 @@ namespace Zbyrach.Pdf
             await page.GoToAsync(url);
 
             await RemoveRedundantContent(page);
-            await ScrollPageToBottomScript(page);
+            await ScrollPageToBottom(page);
             await RemoveTopBanner(page);
             await RemoveFreeStoriesLeftBanner(page);
             await RemoveFollowLinks(page);
@@ -198,7 +198,7 @@ namespace Zbyrach.Pdf
             _logger.LogInformation("The top banner was removed.");
         }
 
-        private async Task ScrollPageToBottomScript(Page page)
+        private async Task ScrollPageToBottom(Page page)
         {
             var markerString = Guid.NewGuid().ToString();
             await ExecuteJavascript(page, @"()=> {                
