@@ -40,9 +40,11 @@ namespace Zbyrach.Pdf
             var articleService = serviceScope.ServiceProvider.GetRequiredService<ArticleService>();
 
             const int DAYS_LIMIT = 30;
+
+            _logger.LogInformation($"We are goint to remove articles older than {DAYS_LIMIT} days.");
             var affectedRows = await articleService.RemoveOlderThan(DAYS_LIMIT);
             
-            _logger.LogInformation($"{affectedRows} are older that {DAYS_LIMIT} days and were deleted from database.");
+            _logger.LogInformation($"Articles that are older that {DAYS_LIMIT} days were deleted from database: {affectedRows}.");
         }
     }
 }
