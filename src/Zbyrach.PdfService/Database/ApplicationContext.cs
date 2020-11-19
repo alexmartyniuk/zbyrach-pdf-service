@@ -1,4 +1,6 @@
+using System.IO;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Zbyrach.Pdf
 {
@@ -21,6 +23,24 @@ namespace Zbyrach.Pdf
                .IsRequired();
             modelBuilder.Entity<ArticleModel>()
                .HasIndex(a => new { a.Url, a.DeviceType, a.Inlined });
+            modelBuilder.Entity<ArticleModel>()
+               .HasIndex(a => a.StoredAt);
         }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (!optionsBuilder.IsConfigured)
+            {
+                var config = new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", false, true)
+                    .AddJsonFile("appsettings.Development.json", true)
+                    .AddEnvironmentVariables()
+                    .Build();
+
+                optionsBuilder.UseNpgsql(config.GetConnectionString());
+            }
+        }
+
     }
 }

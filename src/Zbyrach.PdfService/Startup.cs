@@ -37,6 +37,7 @@ namespace Zbyrach.Pdf
             });
 
             services.AddHostedService<PdfCacheEnricher>();
+            services.AddHostedService<PdfCacheCleaner>();
 
             services.AddSingleton<PdfService>();
             services.AddScoped<ArticleService>();

@@ -12,11 +12,11 @@ namespace Zbyrach.Pdf
         public static void Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
-            CreateDbIfNotExist(host);
+            ApplyDatabaseMigrations(host);
             host.Run(); 
         }  
 
-         private static void CreateDbIfNotExist(IHost host)
+         private static void ApplyDatabaseMigrations(IHost host)
         {
             using var scope = host.Services.CreateScope();
             var services = scope.ServiceProvider;
@@ -29,7 +29,7 @@ namespace Zbyrach.Pdf
             catch (Exception ex)
             {
                 var logger = services.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "An error occurred creating the DB.");
+                logger.LogError(ex, "An error occurred migrating the DB.");
             }
         }       
 

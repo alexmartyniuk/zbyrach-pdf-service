@@ -41,7 +41,7 @@ namespace Zbyrach.Pdf
                 };
                 _context.Articles.Add(article);
             }
-            else 
+            else
             {
                 article.PdfData = StreamToBytes(pdfStream);
                 article.PdfDataSize = pdfStream.Length;
@@ -49,15 +49,21 @@ namespace Zbyrach.Pdf
                 _context.Articles.Update(article);
             }
 
-            
+
             await _context.SaveChangesAsync();
+        }
+
+        public Task<int> RemoveOlderThan(int days)
+        {         
+            return _context.Database
+                .ExecuteSqlRawAsync($@"DELETE FROM ""Articles"" WHERE ""StoredAt"" < now() - INTERVAL '{days} days'");
         }
 
         public Task<List<ArticleModel>> DequeueForGenerating()
         {
             return _context.Articles
-                .Where(a => a.PdfDataSize == 0 && a.LastError == null)                
-                .OrderByDescending(a => a.StoredAt)                
+                .Where(a => a.PdfDataSize == 0 && a.LastError == null)
+                .OrderByDescending(a => a.StoredAt)
                 .ToListAsync();
         }
 
@@ -101,7 +107,7 @@ namespace Zbyrach.Pdf
             var articles = await _context.Articles
                 .Where(a => a.Url == url)
                 .ToListAsync();
-                
+
             foreach (var article in articles)
             {
                 article.LastError = message;
