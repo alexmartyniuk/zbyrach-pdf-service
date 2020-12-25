@@ -21,5 +21,11 @@ namespace Zbyrach.Pdf
 
             return connection;
         }
+
+        public static string GetDatabaseName(this IConfiguration configuration)
+        {
+            var uri = new UriBuilder(configuration["DATABASE_URL"]);
+            return uri.Path.Remove(0,1);
+        }
     }
 }

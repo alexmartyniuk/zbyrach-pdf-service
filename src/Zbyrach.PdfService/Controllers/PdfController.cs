@@ -21,7 +21,7 @@ namespace Zbyrach.Pdf
 
         [HttpPost]
         [Route("/pdf")]
-        [ProducesResponseType(400)]
+        [ProducesResponseType(200)]
         public async Task<IActionResult> GetPdf([FromBody] GeneratePdfRequest request)
         {
             var article = await _articleService.FindOne(request.ArticleUrl, request.DeviceType, request.Inline);
@@ -51,7 +51,7 @@ namespace Zbyrach.Pdf
 
         [HttpPost]
         [Route("/queue")]
-        [ProducesResponseType(400)]
+        [ProducesResponseType(200)]
         public async Task<IActionResult> QueueArticle([FromBody] QueueArticleRequest request)
         {
             if (!await _articleService.IsExistByUrl(request.ArticleUrl))
@@ -60,6 +60,21 @@ namespace Zbyrach.Pdf
             }
 
             return Ok();
+        }
+
+        [HttpGet]
+        [Route("/metainfo")]
+        [ProducesResponseType(200)]
+        public async Task<MetaInfoResponse> MetaInfo()
+        {
+            var totalSizeInBytes = await _articleService.GetTotalSizeInBytes();
+            var totalRowsCount = await _articleService.GetTotalRowsCount();
+
+            return new MetaInfoResponse
+            {
+                TotalRowsCount = totalRowsCount,
+                TotalSizeInBytes = totalSizeInBytes
+            };
         }
 
         private string GetPdfFileName(string url)

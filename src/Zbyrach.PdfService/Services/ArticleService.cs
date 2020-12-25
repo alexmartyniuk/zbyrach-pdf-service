@@ -4,16 +4,21 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Dapper;
+using Npgsql;
 
 namespace Zbyrach.Pdf
 {
     public class ArticleService
     {
         private readonly ApplicationContext _context;
+        private readonly IConfiguration _configuration;
 
-        public ArticleService(ApplicationContext context)
+        public ArticleService(ApplicationContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task<ArticleModel> FindOne(string url, DeviceType deviceType, bool inlined)
@@ -54,7 +59,7 @@ namespace Zbyrach.Pdf
         }
 
         public Task<int> RemoveOlderThan(int days)
-        {         
+        {
             return _context.Database
                 .ExecuteSqlRawAsync($@"DELETE FROM ""Articles"" WHERE ""StoredAt"" < now() - INTERVAL '{days} days'");
         }
@@ -100,6 +105,25 @@ namespace Zbyrach.Pdf
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<int> GetTotalRowsCount()
+        {
+            var sql = $"SELECT SUM(n_live_tup) FROM pg_stat_user_tables;";
+            using (var connection = new NpgsqlConnection(_configuration.GetConnectionString()))
+            {
+                return await connection.QuerySingleAsync<int>(sql);
+            }
+        }
+
+        public async Task<int> GetTotalSizeInBytes()
+        {
+            var databaseName = _configuration.GetDatabaseName();
+            var sql = $"SELECT pg_database_size('{databaseName}');";
+            using (var connection = new NpgsqlConnection(_configuration.GetConnectionString()))
+            {
+                return await connection.QuerySingleAsync<int>(sql);
+            }
         }
 
         public async Task MarkAsFailed(string url, string message)
