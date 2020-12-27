@@ -2,7 +2,7 @@ namespace Zbyrach.Pdf
 {
     public class StatisticResponse
     {
-        public int TotalRowsCount { get; set; }
-        public int TotalSizeInBytes { get; set; }             
+        public long TotalRowsCount { get; set; }
+        public long TotalSizeInBytes { get; set; }             
     }
 }

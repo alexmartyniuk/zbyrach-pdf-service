@@ -107,22 +107,22 @@ namespace Zbyrach.Pdf
             await _context.SaveChangesAsync();
         }
 
-        public async Task<int> GetTotalRowsCount()
+        public async Task<long> GetTotalRowsCount()
         {
             var sql = $"SELECT SUM(n_live_tup) FROM pg_stat_user_tables;";
             using (var connection = new NpgsqlConnection(_configuration.GetConnectionString()))
             {
-                return await connection.QuerySingleAsync<int>(sql);
+                return await connection.QuerySingleAsync<long>(sql);
             }
         }
 
-        public async Task<int> GetTotalSizeInBytes()
+        public async Task<long> GetTotalSizeInBytes()
         {
             var databaseName = _configuration.GetDatabaseName();
             var sql = $"SELECT pg_database_size('{databaseName}');";
             using (var connection = new NpgsqlConnection(_configuration.GetConnectionString()))
             {
-                return await connection.QuerySingleAsync<int>(sql);
+                return await connection.QuerySingleAsync<long>(sql);
             }
         }
 
