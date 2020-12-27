@@ -78,7 +78,7 @@ namespace Zbyrach.Pdf
         }
 
         [HttpDelete]
-        [Route("/cleanup")]
+        [Route("/cleanup/{days}")]
         [ProducesResponseType(204)]
         public async Task<IActionResult> Cleanup([FromRoute]int days)
         {
