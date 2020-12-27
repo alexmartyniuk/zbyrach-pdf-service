@@ -1,6 +1,6 @@
 namespace Zbyrach.Pdf
 {
-    public class MetaInfoResponse
+    public class StatisticResponse
     {
         public int TotalRowsCount { get; set; }
         public int TotalSizeInBytes { get; set; }             

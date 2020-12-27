@@ -63,19 +63,30 @@ namespace Zbyrach.Pdf
         }
 
         [HttpGet]
-        [Route("/metainfo")]
+        [Route("/statistic")]
         [ProducesResponseType(200)]
-        public async Task<MetaInfoResponse> MetaInfo()
+        public async Task<StatisticResponse> Statistic()
         {
             var totalSizeInBytes = await _articleService.GetTotalSizeInBytes();
             var totalRowsCount = await _articleService.GetTotalRowsCount();
 
-            return new MetaInfoResponse
+            return new StatisticResponse
             {
                 TotalRowsCount = totalRowsCount,
                 TotalSizeInBytes = totalSizeInBytes
             };
         }
+
+        [HttpDelete]
+        [Route("/cleanup")]
+        [ProducesResponseType(204)]
+        public async Task<IActionResult> Cleanup([FromRoute]int days)
+        {
+            await _articleService.RemoveOlderThan(days);
+
+            return NoContent();            
+        }
+
 
         private string GetPdfFileName(string url)
         {
