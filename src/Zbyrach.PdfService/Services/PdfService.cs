@@ -163,7 +163,7 @@ namespace Zbyrach.Pdf
             var markerString = Guid.NewGuid().ToString();
             await ExecuteJavascript(page, @"()=> {
                 var banner = document.querySelector('article h4>span');
-                if (banner && banner.textContent.includes('free stories left this month.')) {
+                if (banner && banner.textContent.includes('stories left this month.')) {
                     var parent = banner.parentElement;
                     while (parent) {
                         if (parent.parentElement.nodeName == 'ARTICLE') {
