@@ -1,6 +1,6 @@
 name: zbyrach-pdf-service
 services:
-- dockerfile_path: ./src/Zbyrach.PdfService/Dockerfile
+- dockerfile_path: Dockerfile
   github:
     branch: main
     deploy_on_push: true
