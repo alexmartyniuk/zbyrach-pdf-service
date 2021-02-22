@@ -1,0 +1,8 @@
+name: zbyrach-pdf-service
+services:
+- dockerfile_path: Dockerfile
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: alexmartyniuk/zbyrach-pdf-service
+  name: zbyrach-pdf-service
