@@ -5,9 +5,11 @@ using System.Net.Mime;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using System.Net;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Zbyrach.Pdf
 {
+    [Authorize]
     public class PdfController : Controller
     {
         private readonly PdfService _pdfService;
@@ -22,11 +24,12 @@ namespace Zbyrach.Pdf
         [HttpPost]
         [Route("/pdf")]
         [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
         public async Task<IActionResult> GetPdf([FromBody] GeneratePdfRequest request)
         {
             var article = await _articleService.FindOne(request.ArticleUrl, request.DeviceType, request.Inline);
 
-            Stream stream = null;
+            Stream stream;
             if (article != null && article.PdfDataSize != 0)
             {
                 stream = new MemoryStream(article.PdfData);
@@ -52,6 +55,7 @@ namespace Zbyrach.Pdf
         [HttpPost]
         [Route("/queue")]
         [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
         public async Task<IActionResult> QueueArticle([FromBody] QueueArticleRequest request)
         {
             if (!await _articleService.IsExistByUrl(request.ArticleUrl))
@@ -65,6 +69,7 @@ namespace Zbyrach.Pdf
         [HttpGet]
         [Route("/statistic")]
         [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
         public async Task<StatisticResponse> Statistic()
         {
             var totalSizeInBytes = await _articleService.GetTotalSizeInBytes();
@@ -80,13 +85,13 @@ namespace Zbyrach.Pdf
         [HttpDelete]
         [Route("/cleanup/{days}")]
         [ProducesResponseType(204)]
+        [ProducesResponseType(401)]
         public async Task<IActionResult> Cleanup([FromRoute]int days)
         {
             await _articleService.RemoveOlderThan(days);
 
             return NoContent();            
         }
-
 
         private string GetPdfFileName(string url)
         {

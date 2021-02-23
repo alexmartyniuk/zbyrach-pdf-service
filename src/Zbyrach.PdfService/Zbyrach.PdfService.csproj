@@ -7,6 +7,7 @@
     <LangVersion>8.0</LangVersion>
     <PreserveCompilationReferences>true</PreserveCompilationReferences>
     <PreserveCompilationContext>true</PreserveCompilationContext>
+    <UserSecretsId>d0532914-9cc0-4ed1-ae27-e3aefb9656b7</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>    
