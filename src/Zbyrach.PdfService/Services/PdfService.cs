@@ -162,7 +162,8 @@ namespace Zbyrach.Pdf
         {
             var markerString = Guid.NewGuid().ToString();
             await ExecuteJavascript(page, @"()=> {
-                var banner = document.querySelector('article h4>span');
+                var xpath = ""//span[contains(.,'member-only stor')]"";
+                var banner = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;                
                 if (banner && banner.textContent.includes('stories left this month.')) {
                     var parent = banner.parentElement;
                     while (parent) {

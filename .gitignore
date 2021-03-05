@@ -37,3 +37,5 @@ msbuild.wrn
 
 # VS Code
 .vscode/launch.json
+.fake
+.ionide
